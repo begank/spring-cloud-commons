@@ -34,6 +34,7 @@ import org.springframework.retry.support.RetryTemplate;
 import org.springframework.web.client.RestTemplate;
 
 /**
+ * Ribbon客户端的自动装配
  * Auto configuration for Ribbon (client side load balancing).
  *
  * @author Spencer Gibb
@@ -54,11 +55,17 @@ public class LoadBalancerAutoConfiguration {
 	@Bean
 	public SmartInitializingSingleton loadBalancedRestTemplateInitializer(
 			final List<RestTemplateCustomizer> customizers) {
+		/**
+		 * 实现SmartInitializingSingleton的接口后，当所有单例 bean 都初始化完成以后
+		 * Spring的IOC容器会回调该接口的 afterSingletonsInstantiated()方法。
+		 * 这里相当于返回一个匿名类
+		 */
 		return new SmartInitializingSingleton() {
 			@Override
 			public void afterSingletonsInstantiated() {
 				for (RestTemplate restTemplate : LoadBalancerAutoConfiguration.this.restTemplates) {
 					for (RestTemplateCustomizer customizer : customizers) {
+						// 定制restTemplate,具体的定制逻辑在下面,实际只有一个RestTemplateCustomizer
 						customizer.customize(restTemplate);
 					}
 				}
@@ -90,12 +97,15 @@ public class LoadBalancerAutoConfiguration {
 		@ConditionalOnMissingBean
 		public RestTemplateCustomizer restTemplateCustomizer(
 				final LoadBalancerInterceptor loadBalancerInterceptor) {
+
 			return new RestTemplateCustomizer() {
 				@Override
 				public void customize(RestTemplate restTemplate) {
+					// 定义restTemplate
 					List<ClientHttpRequestInterceptor> list = new ArrayList<>(
 							restTemplate.getInterceptors());
 					list.add(loadBalancerInterceptor);
+					// 给restTemplate设置拦截器
 					restTemplate.setInterceptors(list);
 				}
 			};
